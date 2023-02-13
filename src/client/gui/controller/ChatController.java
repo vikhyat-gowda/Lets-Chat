@@ -57,6 +57,10 @@ public class ChatController {
                     else if (message.startsWith("/m/")) {
                         chatView.updateHistory(message.split("/m/|/e/",0)[1]);
                     }
+                    else if (message.startsWith("/i/")) {
+                        chatModal.send(PacketType.PING, String.valueOf(chatModal.id));
+                        System.out.println("Processed Ping");
+                    }
                  }
             }
         };

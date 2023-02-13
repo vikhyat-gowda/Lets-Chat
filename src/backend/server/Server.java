@@ -20,8 +20,10 @@ public class Server implements Runnable{
     private Thread run;
     private Thread manage;
     private Thread receive;
+    private final int MAX_ATTEMPTS = 5;
 
     private final List<ClientInfo> connectedClients = new ArrayList<ClientInfo>();
+    private List<Integer> clientResponse = new ArrayList<>();
 
     public Server(int port) {
         this.port = port;
@@ -75,26 +77,56 @@ public class Server implements Runnable{
         }
         else if (message.startsWith("/m/")) {
             System.out.println(message.split("/m/|/e/")[1]);
-            setToAll(message.split("/m/|/e/")[1]);
+            sendToAll(PacketType.MESSAGE,message.split("/m/|/e/")[1]);
         }
         else if (message.startsWith("/d/")) {
             System.out.println(message.split("/d/|/e/")[1]);
             disconnect(Integer.parseInt(message.split("/d/|/e/")[1]), true);
-        }
-        else {
+        } else if (message.startsWith("/i/")) {
+            clientResponse.add(Integer.parseInt(message.split("/i/|/e/")[1]));
+
+        } else {
             System.out.println("unhandled " + message);
         }
     }
 
-    private void setToAll(String message) {
-        System.out.println("Indie sent to all");
+    private void sendToAll(PacketType packetType, String message) {
         for(int i = 0; i < connectedClients.size(); i++) {
             ClientInfo clientInfo = connectedClients.get(i);
-            send(PacketType.MESSAGE,message, clientInfo.address(), clientInfo.port());
+            send(packetType,message, clientInfo.getAddress(), clientInfo.getPort());
         }
     }
 
     private void manageClients() {
+        manage = new Thread("Manage") {
+            public void run() {
+                while (running) {
+                    sendToAll(PacketType.PING, "server");
+                    try {
+                        Thread.sleep(5000);
+                        System.out.println("Ping Started");
+                    }catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+
+                    for (int i = 0; i < connectedClients.size(); i++) {
+                        ClientInfo c = connectedClients.get(i);
+                        if(!clientResponse.contains(connectedClients.get(i).getID())) {
+                            if(c.getAttempt() >= MAX_ATTEMPTS) {
+                                disconnect(c.getID(), false);
+                            }
+                            else {
+                               c.incrementAttempt();
+                            }
+                        }else {
+                            clientResponse.remove(Integer.valueOf(c.getID()));
+                        }
+                    }
+                    System.out.println("Ping Ended");
+                }
+            }
+        };
+        manage.start();
     }
 
 
@@ -105,6 +137,7 @@ public class Server implements Runnable{
             case STATUS -> s = "/s/" + message + "/e/";
             case CONNECTION -> s = "/c/" + message + "/e/";
             case MESSAGE ->  s = "/m/" + message + "/e/";
+            case PING -> s = "/i/" + message + "/e/";
         }
         return s.getBytes();
     }
@@ -127,10 +160,10 @@ public class Server implements Runnable{
     }
 
     private void disconnect(int id, boolean status) {
-        System.out.println("called disconneceted ");
+        System.out.println("called disconnected ");
         ClientInfo c = null;
         for (int i = 0; i < connectedClients.size(); i++) {
-            if(connectedClients.get(i).ID() == id) {
+            if(connectedClients.get(i).getID() == id) {
                 c = connectedClients.get(i);
                 connectedClients.remove(i);
                 break;
@@ -138,9 +171,9 @@ public class Server implements Runnable{
         }
         String message = "";
         if(status){
-            message = String.format("Client: %s (%d) @ %s port %d disconnected", c.name(), c.ID(), c.address().toString(), c.port());
+            message = String.format("Client: %s (%d) @ %s port %d disconnected", c.getName(), c.getID(), c.getAddress().toString(), c.getPort());
         }else {
-            String.format("Client: %s (%d) @ %s port %d timed out", c.name().split(":"), c.ID(), c.address().toString(), c.port());
+            String.format("Client: %s (%d) @ %s port %d timed out", c.getName(), c.getID(), c.getAddress().toString(), c.getPort());
         }
         System.out.println(message);
     }

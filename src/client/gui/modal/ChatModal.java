@@ -55,9 +55,12 @@ public class ChatModal {
             case CONNECT -> s = "/c/" + message + "/e/";
             case MESSAGE ->  s = "/m/" + message + "/e/";
             case DISCONNECT -> s = "/d/" + message + "/e/";
+            case PING -> s = "/i/" + message + "/e/";
         }
         return s.getBytes();
     }
+
+
 
     public void send(final PacketType packetType,final String message) {
 

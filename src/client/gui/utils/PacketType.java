@@ -1,5 +1,5 @@
 package client.gui.utils;
 
 public enum PacketType {
-    CONNECT, MESSAGE, STATUS, DISCONNECT
+    CONNECT, MESSAGE, STATUS, DISCONNECT, PING
 }
