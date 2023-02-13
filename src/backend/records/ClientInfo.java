@@ -17,10 +17,6 @@ public class ClientInfo {
         this.ID = ID;
     }
 
-    public void setAttempt(int attempt) {
-        this.attempt = attempt;
-    }
-
     public String getName() {
         return name;
     }

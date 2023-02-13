@@ -6,8 +6,8 @@ import java.util.List;
 
 public class UniqueIdentifier {
 
-    private static List<Integer> ids = new ArrayList<Integer>();
-    private static int RANGE = 10000;
+    private static final List<Integer> ids = new ArrayList<>();
+    private static final int RANGE = 10000;
 
     private static int idx = 0;
 

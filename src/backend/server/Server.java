@@ -2,7 +2,8 @@ package backend.server;
 
 import backend.records.ClientInfo;
 import backend.utils.UniqueIdentifier;
-import backend.utils.PacketType;
+import common.packets.PacketType;
+import common.packets.ProcessPacket;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -18,14 +19,11 @@ public class Server implements Runnable{
     private final int port;
     private DatagramSocket socket;
     private boolean running = false;
-    private Thread run;
-    private Thread manage;
-    private Thread receive;
     private final int MAX_ATTEMPTS = 5;
     private boolean raw = false;
 
-    private final List<ClientInfo> connectedClients = new ArrayList<ClientInfo>();
-    private List<Integer> clientResponse = new ArrayList<>();
+    private final List<ClientInfo> connectedClients = new ArrayList<>();
+    private final List<Integer> clientResponse = new ArrayList<>();
 
     public Server(int port) {
         this.port = port;
@@ -36,7 +34,7 @@ public class Server implements Runnable{
             e.printStackTrace();
             return;
         }
-        run = new Thread(this, "Server");
+        Thread run = new Thread(this, "Server");
         run.start();
     }
 
@@ -80,7 +78,7 @@ public class Server implements Runnable{
                     isNum = false;
                 }
 
-                if(isNum == true) {
+                if(isNum) {
                     System.out.println("here4");
                     boolean exist = false;
                     for (int i = 0; i < connectedClients.size(); i++) {
@@ -110,7 +108,7 @@ public class Server implements Runnable{
     }
 
     private void receive() {
-        receive = new Thread("Receive") {
+        Thread receive = new Thread("Receive") {
             public void run() {
                 while (running) {
                     byte[] data = new byte[1024];
@@ -119,8 +117,8 @@ public class Server implements Runnable{
                     try {
                         socket.receive(packet);
                     } catch (IOException e) {
-                       e.printStackTrace();
-                       return;
+                        e.printStackTrace();
+                        return;
                     }
                     processPacket(packet);
                 }
@@ -129,26 +127,32 @@ public class Server implements Runnable{
         receive.start();
     }
 
+
     private void processPacket(DatagramPacket packet) {
 
         String message = new String(packet.getData());
-        if (raw) System.out.println(message);
-        if(message.startsWith("/c/")) {
-            int id = UniqueIdentifier.getIdentifier();
-            connectedClients.add(new ClientInfo(message.split("/c/|:|/e/", 0)[1], packet.getAddress(), packet.getPort(), id));
-            System.out.printf("New Client %s connected", message.split("/c/|:|/e/", 0)[1]);
-            send(PacketType.CONNECTION,Integer.toString(id) , packet.getAddress(), packet.getPort());
-        }
-        else if (message.startsWith("/m/")) {
-//            System.out.println(message.split("/m/|/e/")[1]);
-            sendToAll(PacketType.MESSAGE,message.split("/m/|/e/")[1]);
-        }
-        else if (message.startsWith("/d/")) {
-//            System.out.println(message.split("/d/|/e/")[1]);
-            disconnect(Integer.parseInt(message.split("/d/|/e/")[1]), true);
-        } else if (message.startsWith("/i/")) {
-            clientResponse.add(Integer.parseInt(message.split("/i/|/e/")[1]));
+        String decodedData;
 
+//        Log packets based on server command
+        if (raw) System.out.println(message);
+
+        if(message.startsWith(PacketType.CONNECT.getValue())) {
+            int id = UniqueIdentifier.getIdentifier();
+            decodedData = ProcessPacket.decodePacket(message, PacketType.CONNECT.getValue(),":",PacketType.ENDCHAR.getValue());
+            connectedClients.add(new ClientInfo(decodedData, packet.getAddress(), packet.getPort(), id));
+            send(PacketType.CONNECT,Integer.toString(id) , packet.getAddress(), packet.getPort());
+            System.out.printf("New Client %s connected from %s:%d", decodedData, packet.getAddress().toString(), packet.getPort());
+        }
+        else if (message.startsWith(PacketType.MESSAGE.getValue())) {
+            decodedData = ProcessPacket.decodePacket(message, PacketType.MESSAGE.getValue(), PacketType.ENDCHAR.getValue());
+            sendToAll(PacketType.MESSAGE, decodedData);
+        }
+        else if (message.startsWith(PacketType.DISCONNECT.getValue())) {
+            decodedData = ProcessPacket.decodePacket(message, PacketType.DISCONNECT.getValue(), PacketType.ENDCHAR.getValue());
+            disconnect(Integer.parseInt(decodedData), true);
+        } else if (message.startsWith(PacketType.PING.getValue())) {
+            decodedData = ProcessPacket.decodePacket(message, PacketType.PING.getValue(), PacketType.ENDCHAR.getValue());
+            clientResponse.add(Integer.parseInt(decodedData));
         } else {
             System.out.println("unhandled " + message);
         }
@@ -162,27 +166,26 @@ public class Server implements Runnable{
     }
 
     private void manageClients() {
-        manage = new Thread("Manage") {
+        Thread manage = new Thread("Manage") {
             public void run() {
                 while (running) {
                     sendToAll(PacketType.PING, "server");
                     try {
                         Thread.sleep(5000);
 
-                    }catch (InterruptedException e) {
+                    } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
 
                     for (int i = 0; i < connectedClients.size(); i++) {
                         ClientInfo c = connectedClients.get(i);
-                        if(!clientResponse.contains(connectedClients.get(i).getID())) {
-                            if(c.getAttempt() >= MAX_ATTEMPTS) {
+                        if (!clientResponse.contains(connectedClients.get(i).getID())) {
+                            if (c.getAttempt() >= MAX_ATTEMPTS) {
                                 disconnect(c.getID(), false);
+                            } else {
+                                c.incrementAttempt();
                             }
-                            else {
-                               c.incrementAttempt();
-                            }
-                        }else {
+                        } else {
                             clientResponse.remove(Integer.valueOf(c.getID()));
                         }
                     }
@@ -193,23 +196,10 @@ public class Server implements Runnable{
     }
 
 
-    private byte[] generatePacket(final PacketType packetType, final String message) {
-        String s = "";
-
-        switch (packetType) {
-            case STATUS -> s = "/s/" + message + "/e/";
-            case CONNECTION -> s = "/c/" + message + "/e/";
-            case MESSAGE ->  s = "/m/" + message + "/e/";
-            case PING -> s = "/i/" + message + "/e/";
-        }
-        return s.getBytes();
-    }
-
     private void send(PacketType packetType, final String message, final InetAddress address, final int port) {
         Thread send = new Thread() {
             public void run() {
-
-                byte[] data = generatePacket(packetType, message);
+                byte[] data = ProcessPacket.encodePacket(packetType, message);
 
                 DatagramPacket packet = new DatagramPacket(data, data.length, address, port);
                 try {
@@ -238,16 +228,15 @@ public class Server implements Runnable{
             }
         }
 
-        String message = "";
+        String message;
 
         if(!exist) return;
         if (status) {
             message = String.format("Client: %s (%d) @ %s port %d disconnected", c.getName(), c.getID(), c.getAddress().toString(), c.getPort());
         } else {
-            String.format("Client: %s (%d) @ %s port %d timed out", c.getName(), c.getID(), c.getAddress().toString(), c.getPort());
+            message = String.format("Client: %s (%d) @ %s port %d timed out", c.getName(), c.getID(), c.getAddress().toString(), c.getPort());
         }
 
         System.out.println(message);
     }
-
 }

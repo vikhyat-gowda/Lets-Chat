@@ -1,9 +1,7 @@
 package client.gui.controller;
 
-import client.gui.modal.ChatModal;
 import client.gui.modal.LoginModal;
 import client.gui.records.ClientInfo;
-import client.gui.views.ChatView;
 import client.gui.views.LoginView;
 
 import java.awt.event.ActionEvent;
@@ -11,20 +9,13 @@ import java.awt.event.ActionListener;
 
 public class MainController {
 
-//    ClientInfo
+
     ClientInfo clientInfo;
 
+    private final LoginView loginView = new LoginView();
 
-//    Views
-    private LoginView loginView = new LoginView();
-    private ChatView chatView;
+    private final LoginModal loginModal = new LoginModal();
 
-
-//    Modals
-    private LoginModal loginModal = new LoginModal();
-    private ChatModal chatModal;
-
-    private ChatController chatController;
 
     public MainController() {
         loginView.createWindow();
@@ -32,7 +23,7 @@ public class MainController {
     }
 
     private void switchWindowToChat() {
-        chatController = new ChatController(clientInfo);
+        new ChatController(clientInfo);
     }
 
     class LoginFormSubmitListener implements ActionListener {

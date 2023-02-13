@@ -2,8 +2,9 @@ package client.gui.controller;
 
 import client.gui.modal.ChatModal;
 import client.gui.records.ClientInfo;
-import client.gui.utils.PacketType;
+import common.packets.PacketType;
 import client.gui.views.ChatView;
+import common.packets.ProcessPacket;
 
 import java.awt.event.*;
 
@@ -13,19 +14,12 @@ public class ChatController {
     ChatView chatView;
     ChatModal chatModal;
     boolean connState = true;
-    Thread listen, run;
+    Thread listen;
 
     public ChatController(ClientInfo clientInfo) {
         this.clientInfo = clientInfo;
         chatView = new ChatView(clientInfo);
         chatModal = new ChatModal(clientInfo);
-
-        chatView.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                System.out.println("Dissconnet from modal");
-            }
-        });
 
         chatView.updateHistory("Attempting a connection to " + clientInfo.address() + ":" + clientInfo.port() + ", user: " + clientInfo.name());
 
@@ -46,21 +40,25 @@ public class ChatController {
     public void listen() {
         listen = new Thread("listen") {
             public void run() {
-                System.out.println("Running listerning");
+                System.out.println("Running listening");
                 while (connState) {
                     String message = chatModal.receive();
+                    String decodedData;
 
-                    if (message.startsWith("/c/")) {
-                        chatModal.id = Integer.parseInt(message.split("/c/|/e/")[1]);
-                        chatView.updateHistory("Successfully connected to server! " + chatModal.id);
+                    if (message.startsWith(PacketType.CONNECT.getValue())) {
+                        decodedData = ProcessPacket.decodePacket(message, PacketType.CONNECT.getValue(), PacketType.ENDCHAR.getValue());
+                        chatModal.token = Integer.parseInt(decodedData);
+                        chatView.updateHistory("Successfully connected to server! " + chatModal.token);
                     }
-                    else if (message.startsWith("/m/")) {
-                        chatView.updateHistory(message.split("/m/|/e/",0)[1]);
+                    else if (message.startsWith(PacketType.MESSAGE.getValue())) {
+                        decodedData = ProcessPacket.decodePacket(message, PacketType.MESSAGE.getValue(), PacketType.ENDCHAR.getValue());
+                        chatView.updateHistory(decodedData);
                     }
-                    else if (message.startsWith("/i/")) {
-                        chatModal.send(PacketType.PING, String.valueOf(chatModal.id));
+                    else if (message.startsWith(PacketType.PING.getValue())) {
+                        chatModal.send(PacketType.PING, String.valueOf(chatModal.token));
                         System.out.println("Processed Ping");
                     }
+
                  }
             }
         };
@@ -88,7 +86,7 @@ public class ChatController {
         @Override
         public void windowClosing(WindowEvent e) {
             System.out.println("Disconnected");
-            chatModal.send(PacketType.DISCONNECT, String.valueOf(chatModal.id));
+            chatModal.send(PacketType.DISCONNECT, String.valueOf(chatModal.token));
             connState = false;
             listen.interrupt();
         }

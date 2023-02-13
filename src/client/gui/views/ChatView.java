@@ -10,8 +10,9 @@ import java.awt.event.*;
 
 public class ChatView extends JFrame {
 
-    private String name, address;
-    private int port;
+    private final String name;
+    private final String address;
+    private final int port;
     private JTextField txtMessage;
     private JTextArea history;
     private DefaultCaret caret;
@@ -22,9 +23,7 @@ public class ChatView extends JFrame {
         this.address = clientInfo.address();
         this.port = clientInfo.port();
 
-
         createWindow();
-        String conn = name + "connected from " + address + ":" + port;
     }
 
     public void addSendKeyListener(KeyAdapter listenerForSendKey) {
@@ -76,13 +75,6 @@ public class ChatView extends JFrame {
         contentPane.add(scroll, scrollConstraints);
 
         txtMessage = new JTextField();
-//        txtMessage.addKeyListener(new KeyAdapter() {
-//            public void keyPressed(KeyEvent e) {
-//                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-//                    formatsMessage(txtMessage.getText());
-//                }
-//            }
-//        });
         GridBagConstraints gbc_txtMessage = new GridBagConstraints();
         gbc_txtMessage.insets = new Insets(0, 0, 0, 5);
         gbc_txtMessage.fill = GridBagConstraints.HORIZONTAL;
@@ -98,8 +90,6 @@ public class ChatView extends JFrame {
         gbc_btnSend.gridx = 2;
         gbc_btnSend.gridy = 2;
         contentPane.add(btnSend, gbc_btnSend);
-
-
 
         setVisible(true);
         txtMessage.requestFocusInWindow();
