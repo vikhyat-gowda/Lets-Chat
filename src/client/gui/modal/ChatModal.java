@@ -11,12 +11,10 @@ import java.net.*;
 public class ChatModal {
 
     private InetAddress ip;
-    private DatagramSocket socket;
-    private String message;
+    public DatagramSocket socket;
+    public boolean connState;
     public int id = -1;
     ClientInfo clientInfo;
-
-    private Thread send;
 
     public ChatModal(ClientInfo clientInfo) {
         this.clientInfo = clientInfo;
@@ -28,9 +26,11 @@ public class ChatModal {
             ip = InetAddress.getByName(clientInfo.address());
         } catch (SocketException | UnknownHostException e) {
             e.printStackTrace();
-            return false;
+            connState = false;
+            return connState;
         }
-        return true;
+        connState = true;
+        return connState;
     }
 
 
@@ -39,7 +39,8 @@ public class ChatModal {
         DatagramPacket packet = new DatagramPacket(data, data.length);
 
         try {
-            socket.receive(packet);
+            if(connState)
+                socket.receive(packet);
         }catch (IOException e) {
             e.printStackTrace();
         }
@@ -51,15 +52,16 @@ public class ChatModal {
 
         switch (packetType) {
             case STATUS -> s = "/s/" + message + "/e/";
-            case CONNECTION -> s = "/c/" + message + "/e/";
+            case CONNECT -> s = "/c/" + message + "/e/";
             case MESSAGE ->  s = "/m/" + message + "/e/";
+            case DISCONNECT -> s = "/d/" + message + "/e/";
         }
         return s.getBytes();
     }
 
     public void send(final PacketType packetType,final String message) {
 
-        send = new Thread("Send") {
+        Thread send = new Thread("Send") {
             public void run() {
                 byte[] data = generatePacket(packetType, message);
                 DatagramPacket packet = new DatagramPacket(data, data.length, ip, clientInfo.port());
@@ -72,4 +74,5 @@ public class ChatModal {
         };
         send.start();
     }
+
 }
