@@ -5,12 +5,9 @@ import client.gui.records.ClientInfo;
 import client.gui.utils.PacketType;
 import client.gui.views.ChatView;
 
-import java.awt.event.ActionListener;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
+import java.awt.event.*;
 
-public class ChatController implements Runnable {
+public class ChatController {
 
     ClientInfo clientInfo;
     ChatView chatView;
@@ -23,6 +20,13 @@ public class ChatController implements Runnable {
         chatView = new ChatView(clientInfo);
         chatModal = new ChatModal(clientInfo);
 
+        chatView.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                System.out.println("Dissconnet from modal");
+            }
+        });
+
         chatView.updateHistory("Attempting a connection to " + clientInfo.address() + ":" + clientInfo.port() + ", user: " + clientInfo.name());
 
         boolean connStatus = chatModal.openConnection();
@@ -32,16 +36,15 @@ public class ChatController implements Runnable {
         } else {
             chatView.updateHistory("Connection established");
             chatView.addSendKeyListener(new SendButtonListener());
-            chatModal.send(PacketType.CONNECTION, "Connection Successful");
-            run = new Thread(this, "Chat Controller");
-            run.start();
+            chatView.addWindowCloseEvent(new WindowCloseButtonEvent());
+
+            chatModal.send(PacketType.CONNECT, String.format("%s: Connection Successful", clientInfo.name()));
+            listen();
         }
     }
 
     public void listen() {
-
         listen = new Thread("listen") {
-
             public void run() {
                 System.out.println("Running listerning");
                 while (connState) {
@@ -60,10 +63,7 @@ public class ChatController implements Runnable {
         listen.start();
     }
 
-    @Override
-    public void run() {
-        listen();
-    }
+
 
     class SendButtonListener extends KeyAdapter {
         @Override
@@ -76,6 +76,16 @@ public class ChatController implements Runnable {
                     chatModal.send(PacketType.MESSAGE, formattedMessage);
                 }
             }
+        }
+    }
+
+    class WindowCloseButtonEvent extends WindowAdapter {
+        @Override
+        public void windowClosing(WindowEvent e) {
+            System.out.println("Disconnected");
+            chatModal.send(PacketType.DISCONNECT, String.valueOf(chatModal.id));
+            connState = false;
+            listen.interrupt();
         }
     }
 
