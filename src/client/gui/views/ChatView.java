@@ -107,8 +107,11 @@ public class ChatView extends JFrame {
 
     public String formatsMessage(String message) {
         message = name + ": " + message;
-        txtMessage.setText("");
         return message;
+    }
+
+    public void clearInputField() {
+        txtMessage.setText("");
     }
 
     public void updateHistory(String message) {
