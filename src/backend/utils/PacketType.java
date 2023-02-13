@@ -1,5 +1,5 @@
 package backend.utils;
 
 public enum PacketType {
-    CONNECTION, MESSAGE, STATUS
+    CONNECTION, MESSAGE, STATUS, DISCONNECT
 }
