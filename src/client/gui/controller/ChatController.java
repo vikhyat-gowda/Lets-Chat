@@ -78,6 +78,7 @@ public class ChatController {
                 if (!message.equals("")) {
                     String formattedMessage = chatView.formatsMessage(chatView.getInputText());
                     chatModal.send(PacketType.MESSAGE, formattedMessage);
+                    chatView.clearInputField();
                 }
             }
         }
