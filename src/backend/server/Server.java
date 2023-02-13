@@ -57,9 +57,7 @@ public class Server implements Runnable{
                        e.printStackTrace();
                        return;
                     }
-
                     processPacket(packet);
-
                 }
             }
         };
@@ -71,16 +69,20 @@ public class Server implements Runnable{
         String message = new String(packet.getData());
         if(message.startsWith("/c/")) {
             int id = UniqueIdentifier.getIdentifier();
-            System.out.println("Client Added");
-            connectedClients.add(new ClientInfo(message.substring(3), packet.getAddress(), packet.getPort(), id));
+            connectedClients.add(new ClientInfo(message.split("/c/|:|/e/", 0)[1], packet.getAddress(), packet.getPort(), id));
+            System.out.printf("New Client %s connected", message.split("/c/|:|/e/", 0)[1]);
             send(PacketType.CONNECTION,Integer.toString(id) , packet.getAddress(), packet.getPort());
         }
         else if (message.startsWith("/m/")) {
             System.out.println(message.split("/m/|/e/")[1]);
             setToAll(message.split("/m/|/e/")[1]);
         }
+        else if (message.startsWith("/d/")) {
+            System.out.println(message.split("/d/|/e/")[1]);
+            disconnect(Integer.parseInt(message.split("/d/|/e/")[1]), true);
+        }
         else {
-            System.out.println("unhandled " +message);
+            System.out.println("unhandled " + message);
         }
     }
 
@@ -123,4 +125,24 @@ public class Server implements Runnable{
         };
         send.start();
     }
+
+    private void disconnect(int id, boolean status) {
+        System.out.println("called disconneceted ");
+        ClientInfo c = null;
+        for (int i = 0; i < connectedClients.size(); i++) {
+            if(connectedClients.get(i).ID() == id) {
+                c = connectedClients.get(i);
+                connectedClients.remove(i);
+                break;
+            }
+        }
+        String message = "";
+        if(status){
+            message = String.format("Client: %s (%d) @ %s port %d disconnected", c.name(), c.ID(), c.address().toString(), c.port());
+        }else {
+            String.format("Client: %s (%d) @ %s port %d timed out", c.name().split(":"), c.ID(), c.address().toString(), c.port());
+        }
+        System.out.println(message);
+    }
+
 }
