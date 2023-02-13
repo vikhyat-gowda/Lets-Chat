@@ -6,13 +6,9 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.DefaultCaret;
 import java.awt.*;
-import java.awt.event.ActionListener;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
+import java.awt.event.*;
 
 public class ChatView extends JFrame {
-
-    private JPanel contentPane;
 
     private String name, address;
     private int port;
@@ -35,6 +31,10 @@ public class ChatView extends JFrame {
         txtMessage.addKeyListener(listenerForSendKey);
     }
 
+    public void addWindowCloseEvent(WindowAdapter windowCloseEvent) {
+        addWindowListener(windowCloseEvent);
+    }
+
     public String getInputText() {
         return txtMessage.getText();
     }
@@ -49,7 +49,7 @@ public class ChatView extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(880, 550);
         setLocationRelativeTo(null);
-        contentPane = new JPanel();
+        JPanel contentPane = new JPanel();
         contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
         setContentPane(contentPane);
 
@@ -99,8 +99,9 @@ public class ChatView extends JFrame {
         gbc_btnSend.gridy = 2;
         contentPane.add(btnSend, gbc_btnSend);
 
-        setVisible(true);
 
+
+        setVisible(true);
         txtMessage.requestFocusInWindow();
     }
 
